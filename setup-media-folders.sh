@@ -32,7 +32,6 @@ fi
 DIRS=(
   "media/books"
   "media/movies"
-  "media/movies"
   "media/music"
   "media/tv"
 
