@@ -10,7 +10,7 @@ services:
     volumes:
       - ./data:/data
       - ./letsencrypt:/etc/letsencrypt
-    networks: 
+    networks:
       - proxy-network
   
   #plex:
@@ -138,7 +138,7 @@ services:
       - LOG_LEVEL=debug
       - TZ=Europe/Vienna
       - UID=1000
-      - GID=100 
+      - GID=100
       - GIDLIST=100
       - PUID=1000
       - PGID=1000
