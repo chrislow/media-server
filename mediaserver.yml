@@ -1,37 +1,56 @@
 services:
-  plex:
-    image: lscr.io/linuxserver/plex:latest
-    container_name: plex
-    network_mode: host
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/Vienna
-      - VERSION=docker
-      - PLEX_CLAIM= #optional
-    volumes:
-      - /docker/appdata/plex:/config
-      - /data/media:/data/media
+  proxy:
+    image: 'jc21/nginx-proxy-manager:latest'
+    container_name: nginx-proxy-manager
     restart: unless-stopped
-  jellyfin:
-    image: lscr.io/linuxserver/jellyfin:latest
-    container_name: jellyfin
-    network_mode: host
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/Vienna
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - /docker/appdata/jellyfin:/config
-      - /data/media:/data/media
     ports:
-      - 8096:8096
-    restart: unless-stopped
+      - '80:80'
+      - '81:81'
+      - '443:443'
+    volumes:
+      - ./data:/data
+      - ./letsencrypt:/etc/letsencrypt
+    networks: 
+      - proxy-network
+  
+  #plex:
+    #image: lscr.io/linuxserver/plex:latest
+    #container_name: plex
+    #environment:
+      #- PUID=1000
+      #- PGID=1000
+      #- TZ=Europe/Vienna
+      #- VERSION=docker
+      #- PLEX_CLAIM= #optional
+    #volumes:
+      #- /docker/appdata/plex:/config
+      #- /data/media:/data/media
+    #ports:
+      #- "32400:32400"
+    #networks:
+      #- proxy-network
+    #restart: unless-stopped
+
+  #jellyfin:
+    #image: lscr.io/linuxserver/jellyfin:latest
+    #container_name: jellyfin
+    #environment:
+    #  - PUID=1000
+    #  - PGID=1000
+    #  - TZ=Europe/Vienna
+    #volumes:
+    #  - /etc/localtime:/etc/localtime:ro
+    #  - /docker/appdata/jellyfin:/config
+    #  - /data/media:/data/media
+    #ports:
+    #  - "8096:8096"
+    #networks:
+    #  - proxy-network
+    #restart: unless-stopped
+
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
-    network_mode: host
     environment:
       - PUID=1000
       - PGID=1000
@@ -41,12 +60,14 @@ services:
       - /docker/appdata/sonarr:/config
       - /data:/data
     ports:
-      - 8989:8989
+      - "8989:8989"
+    networks:
+      - proxy-network
     restart: unless-stopped
+
   radarr:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
-    network_mode: host
     environment:
       - PUID=1000
       - PGID=1000
@@ -56,12 +77,14 @@ services:
       - /docker/appdata/radarr:/config
       - /data:/data
     ports:
-      - 7878:7878
+      - "7878:7878"
+    networks:
+      - proxy-network
     restart: unless-stopped
+
   sabnzbd:
     image: lscr.io/linuxserver/sabnzbd:latest
     container_name: sabnzbd
-    network_mode: host
     environment:
       - PUID=1000
       - PGID=1000
@@ -71,12 +94,14 @@ services:
       - /docker/appdata/sabnzbd:/config
       - /data/usenet:/data/usenet:rw
     ports:
-      - 8080:8080
+      - "8080:8080"
+    networks:
+      - proxy-network
     restart: unless-stopped
+
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
-    network_mode: host
     environment:
       - PUID=1000
       - PGID=1000
@@ -86,17 +111,66 @@ services:
       - /docker/appdata/prowlarr:/config
       - /data:/data
     ports:
-      - 9696:9696
+      - "9696:9696"
+    networks:
+      - proxy-network
     restart: unless-stopped
-  overseerr:
-    image: sctx/overseerr:latest
-    container_name: overseerr
+
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
     environment:
       - LOG_LEVEL=debug
       - TZ=Europe/Vienna
-      - PORT=5055 #optional
+      - PORT=5055
     ports:
-      - 5055:5055
+      - "5055:5055"
     volumes:
-      - /docker/appdata/overseerr:/app/config
+      - /docker/appdata/jellyseerr:/app/config
+    networks:
+      - proxy-network
     restart: unless-stopped
+
+  emby:
+    image: emby/embyserver
+    container_name: embyserver
+    environment:
+      - LOG_LEVEL=debug
+      - TZ=Europe/Vienna
+      - UID=1000
+      - GID=100 
+      - GIDLIST=100
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/emby:/config
+      - /data/media:/data/media
+    ports:
+      - 8096:8096
+      - 8920:8920
+    networks:
+      - proxy-network  
+    restart: on-failure
+
+  tvheadend:
+    image: lscr.io/linuxserver/tvheadend:latest
+    container_name: tvheadend
+    environment:
+      - TZ=Europe/Vienna
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/tvheadend:/var/lib/tvheadend
+      - /data/media:/var/lib/tvheadend/recordings
+    ports:
+      - "9981:9981"
+      - "9982:9982"
+    networks:
+      - proxy-network
+    restart: unless-stopped
+
+networks:
+  proxy-network:
+    driver: bridge
