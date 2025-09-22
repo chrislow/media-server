@@ -1,7 +1,7 @@
 services:
   proxy:
     image: 'jc21/nginx-proxy-manager:latest'
-    container_name: nginx-proxy-manager
+    container_name: nginx-proxy-manager  # Changed from 'plex'
     restart: unless-stopped
     ports:
       - '80:80'
@@ -10,8 +10,17 @@ services:
     volumes:
       - ./data:/data
       - ./letsencrypt:/etc/letsencrypt
+    networks:  # Changed from network_mode: host
+      - proxy-network
+
+  alpine-nginx:
+    image: nginx:alpine
+    container_name: alpine-nginx
+    volumes:
+      - /data/public:/usr/share/nginx/html:ro
     networks:
       - proxy-network
+    restart: unless-stopped
   
   #plex:
     #image: lscr.io/linuxserver/plex:latest
@@ -31,22 +40,20 @@ services:
       #- proxy-network
     #restart: unless-stopped
 
-  #jellyfin:
-    #image: lscr.io/linuxserver/jellyfin:latest
-    #container_name: jellyfin
-    #environment:
-    #  - PUID=1000
-    #  - PGID=1000
-    #  - TZ=Europe/Vienna
-    #volumes:
-    #  - /etc/localtime:/etc/localtime:ro
-    #  - /docker/appdata/jellyfin:/config
-    #  - /data/media:/data/media
-    #ports:
-    #  - "8096:8096"
-    #networks:
-    #  - proxy-network
-    #restart: unless-stopped
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Vienna
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/jellyfin:/config
+      - /data/media:/data/media
+    networks:
+      - proxy-network
+    restart: unless-stopped
 
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
@@ -59,8 +66,6 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/sonarr:/config
       - /data:/data
-    ports:
-      - "8989:8989"
     networks:
       - proxy-network
     restart: unless-stopped
@@ -76,8 +81,6 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/radarr:/config
       - /data:/data
-    ports:
-      - "7878:7878"
     networks:
       - proxy-network
     restart: unless-stopped
@@ -110,8 +113,6 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/prowlarr:/config
       - /data:/data
-    ports:
-      - "9696:9696"
     networks:
       - proxy-network
     restart: unless-stopped
@@ -123,8 +124,6 @@ services:
       - LOG_LEVEL=debug
       - TZ=Europe/Vienna
       - PORT=5055
-    ports:
-      - "5055:5055"
     volumes:
       - /docker/appdata/jellyseerr:/app/config
     networks:
@@ -137,9 +136,9 @@ services:
     environment:
       - LOG_LEVEL=debug
       - TZ=Europe/Vienna
-      - UID=1000
-      - GID=100
-      - GIDLIST=100
+      - UID=1000 # The UID to run emby as (default: 2)
+      - GID=100 # The GID to run emby as (default 2)
+      - GIDLIST=100 # A comma-separated list of additional GIDs to run emby as (default: 2)
       - PUID=1000
       - PGID=1000
     volumes:
@@ -150,26 +149,8 @@ services:
       - 8096:8096
       - 8920:8920
     networks:
-      - proxy-network  
-    restart: on-failure
-
-  tvheadend:
-    image: lscr.io/linuxserver/tvheadend:latest
-    container_name: tvheadend
-    environment:
-      - TZ=Europe/Vienna
-      - PUID=1000
-      - PGID=1000
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - /docker/appdata/tvheadend:/var/lib/tvheadend
-      - /data/media:/var/lib/tvheadend/recordings
-    ports:
-      - "9981:9981"
-      - "9982:9982"
-    networks:
       - proxy-network
-    restart: unless-stopped
+    restart: on-failure
 
 networks:
   proxy-network:
